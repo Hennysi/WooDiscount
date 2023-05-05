@@ -1,0 +1,40 @@
+.woo_discount_free_select {
+	position: relative;
+	display: inline-block;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+}
+
+.selected-option {
+	padding: 6px 10px;
+	cursor: pointer;
+}
+
+.options {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	border: 1px solid #ccc;
+	border-top: none;
+	border-radius: 0 0 4px 4px;
+	background-color: #fff;
+	display: none;
+}
+
+.option {
+	padding: 6px 10px;
+	cursor: pointer;
+}
+
+.option a {
+	display: block;
+}
+
+.option:hover {
+	background-color: #f2f2f2;
+}
+
+.woo_discount_free_select.open .options {
+	display: block;
+}
