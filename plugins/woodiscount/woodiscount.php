@@ -110,7 +110,7 @@
 
         public function woo_discount_cart() {
             $woo_discount_category = get_option( 'woo_discount_category' );
-            $woo_discount_free = get_option( 'woo_discount_free' );
+//            $woo_discount_free = get_option( 'woo_discount_free' );
 
             $last_product = null;
 
