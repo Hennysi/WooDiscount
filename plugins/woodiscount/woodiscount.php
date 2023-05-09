@@ -40,6 +40,20 @@
         }
 
         public function woo_discount_callback() {
+            if ( isset( $_POST['submit'] ) ) {
+                if ( isset( $_POST['woo_discount_category'] ) && isset( $_POST['woo_discount_count'] ) && isset( $_POST['woo_discount_free'] ) && wp_verify_nonce( $_POST['woo_discount_nonce'], 'woo_discount_save_data' ) ) {
+                    $discount_category = sanitize_text_field( $_POST['woo_discount_category'] );
+                    $discount_count = sanitize_text_field( $_POST['woo_discount_count'] );
+                    $discount_free = sanitize_text_field( $_POST['woo_discount_free'] );
+
+                    update_option( 'woo_discount_category', $discount_category );
+                    update_option( 'woo_discount_count', $discount_count );
+                    update_option( 'woo_discount_free', $discount_free );
+
+                    echo '<div class="notice notice-success"><p>Successfully saved.</p></div>';
+                }
+            }
+
             $product_categories = get_terms( 'product_cat' );
 
             $woo_discount_category = get_option( 'woo_discount_category' );
@@ -92,33 +106,13 @@
                 </form>
             </div>
             <?php
-
-            if ( ! isset( $_POST['woo_discount_nonce'] ) || ! wp_verify_nonce( $_POST['woo_discount_nonce'], 'woo_discount_save_data' ) ) {
-                return;
-            }
-
-            if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-                return;
-            }
-
-            $discount_category = isset( $_POST['woo_discount_category'] ) ? sanitize_text_field( $_POST['woo_discount_category'] ) : null;
-            $discount_count = isset( $_POST['woo_discount_count'] ) ? sanitize_text_field( $_POST['woo_discount_count'] ) : null;
-            $discount_free = isset( $_POST['woo_discount_free'] ) ? sanitize_text_field( $_POST['woo_discount_free'] ) : null;
-
-            if ( $discount_category ) {
-                update_option( 'woo_discount_category', $discount_category );
-            }
-            if ( $discount_count ) {
-                update_option( 'woo_discount_count', $discount_count );
-            }
-            if ( $discount_free ) {
-                update_option( 'woo_discount_free', $discount_free );
-            }
         }
 
         public function woo_discount_cart() {
             $woo_discount_category = get_option( 'woo_discount_category' );
             $woo_discount_free = get_option( 'woo_discount_free' );
+
+            $last_product = null;
 
             $cart = WC()->cart;
             $cart_items = $cart->get_cart();
@@ -131,6 +125,7 @@
                 foreach ( $terms as $term ) {
                     if ( $term->slug === $woo_discount_category ) {
                         $categoryItemCount += $cart_item['quantity'];
+                        $last_product = $cart_item['data'];
                     }
                 }
             }
@@ -157,7 +152,8 @@
 
             $woo_discount_array = [
                 'items_count'   => $categoryItemCount,
-                'free_products' => $free_products_arr
+                'free_products' => $free_products_arr,
+                'last_product'  => $last_product
             ];
 
             return $woo_discount_array;
@@ -187,26 +183,35 @@
                 $product_ids[] = $cart_item['product_id'];
             }
 
+            $is_variable = get_post_type( $product->get_id() ) === 'product_variation';
+
+            if ( $is_variable ) {
+                $product_id = wc_get_product( $product->get_id() )->get_parent_id();
+            } else {
+                $product_id = $product->get_id();
+            }
 
             if ( count( array_intersect( $product_ids, $cart_count['free_products'] ) ) === 0 ) {
                 if ( $cart_count['items_count'] >= $woo_discount_count ) {
-                    if ( has_term( $woo_discount_category, 'product_cat', $product->get_id() ) ) {
-                        ob_start();
-                        ?>
-                        <div class="woo_discount_free_select">
-                            <div class="selected-option"><?php _e( "Select Free Product ˅", "woo-discount" ) ?></div>
-                            <div class="options">
-                                <?php foreach ( $woo_discount_free_products as $product ): ?>
-                                    <div class="option">
-                                        <a href="#" class="option-product" data-id="<?php echo $product->get_id() ?>"><?php echo $product->get_name() ?></a>
-                                    </div>
-                                <?php endforeach; ?>
+                    if ( has_term( $woo_discount_category, 'product_cat', $product_id ) ) {
+                        if ( $product->get_id() === $cart_count['last_product']->get_id() ) {
+                            ob_start();
+                            ?>
+                            <div class="woo_discount_free_select">
+                                <div class="selected-option"><?php _e( "Select Free Product ˅", "woo-discount" ) ?></div>
+                                <div class="options">
+                                    <?php foreach ( $woo_discount_free_products as $product ): ?>
+                                        <div class="option">
+                                            <a href="#" class="option-product" data-id="<?php echo $product->get_id() ?>"><?php echo $product->get_name() ?></a>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
                             </div>
-                        </div>
 
-                        <?php
-                        $select_html = ob_get_clean();
-                        $product_name .= '<br>' . $select_html;
+                            <?php
+                            $select_html = ob_get_clean();
+                            $product_name .= '<br>' . $select_html;
+                        }
                     }
                 }
             }
